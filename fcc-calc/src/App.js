@@ -4,99 +4,115 @@ import './App.css';
 
 class App extends Component {
 
-  //default value for display
   constructor(props) {
     super(props);
     this.state = {
-      displayValue: '0',
-      prevDisplayValue: '0',
-      operator: ''
+      //is this necessary? still works when removed
+      instructions: '0',
     };
-
     //no clue why this is necessary, shouldn't the state be accessible to the render function already?
     this.updateDigits = this.updateDigits.bind(this);
   }
 
-  updateDigits(digit){
-
-    this.setState({
-      displayValue: this.state.displayValue + digit
-    })
-  }
-
   componentDidUpdate (){
-    if(this.state.displayValue.length > 1){
-      if(this.state.displayValue.charAt(0) === '0'){
+
+    // /([^0-9]0[^.x*+-/])/g     regex for operators followed by leading zero that is not a decimal or operator
+
+    const instructions = this.state.instructions
+    const reggie = /([^0-9]0[^.x*+-/])/g
+    const leadingZeros = reggie.exec(instructions)
+
+    if(leadingZeros !== null){
+      console.log(leadingZeros.index)
+      console.log(leadingZeros)
+      this.setState({
+        instructions: instructions.substring(0, leadingZeros.index + 1) + instructions.substring(leadingZeros.index + 2 , instructions.length)
+      })
+    }
+
+    if( (instructions > 1) && (instructions.charAt(0) === '0') ){
         this.setState({
-          displayValue: this.state.displayValue.slice(1, this.state.displayValue.length)
+          instructions: instructions.substring(1, instructions.length)
         })
-      }
+    }
+
+    if( instructions[0] === '0' && instructions[1] === '0'){
+      this.setState({
+        instructions: '0'
+      })
     }
   }
 
-  clearDisplay(){
+  dotify(){
+
+    const lastChar = this.state.instructions.slice(-1)
+    var lastNan = ''
+
+    for(var i=0; i < this.state.instructions.length; i++){
+      if( isNaN(this.state.instructions[i]) ) {
+        lastNan = this.state.instructions[i]
+      }
+    }
+
+    if( (lastChar!== '.') && (lastNan !== '.') ){
+      this.setState({
+        instructions: this.state.instructions + '.'
+      })
+    }
+  }
+
+  updateDigits(digit){
     this.setState({
-      displayValue: '0'
+      instructions: this.state.instructions + digit
     })
+  }
+
+  clearDisplay(type){
+    if(type === 'AC'){
+      this.setState({
+        instructions: '0'
+      })
+    }
+    if(type === 'CE'){
+      this.setState({
+        instructions: this.state.instructions.substring(0, this.state.instructions.length-1)
+      })
+    }
   }
 
   minusPos(){
-    if(this.state.displayValue.charAt(0) !== '-' ){
+    this.setState({
+      instructions: this.state.instructions + '-'
+    })
+}
+
+  operators(operator){
+    const lastChar = this.state.instructions.slice(-1)
+    if( (lastChar !== '+') && (lastChar !== '-')  && (lastChar !== '*')  && (lastChar !== '/') ){
       this.setState({
-        displayValue: '-' + this.state.displayValue
+        instructions: this.state.instructions + operator
       })
     } else{
-      this.setState({
-        displayValue: this.state.displayValue.slice(1, this.state.displayValue.length)
-      })
+      console.log('repeat operator')
     }
   }
 
-  operators(operator){
-    this.setState({
-      prevDisplayValue: this.state.displayValue,
-      operator: operator
-    })
-
-    this.clearDisplay()
-  }
-
   equalator(){
-
-    const pDisp = Number(this.state.prevDisplayValue)
-    const disp = Number(this.state.displayValue)
-
-    switch(this.state.operator){
-      case '+':
+    if (eval(this.state.instructions) === Infinity){
       this.setState({
-        displayValue: (pDisp + disp).toString()
+        instructions: 'undefined'
       })
-      break;
-      case '-':
+    } else{
       this.setState({
-        displayValue: (pDisp - disp).toString()
+        instructions: eval(this.state.instructions).toString()
       })
-      break;
-      case 'x':
-      this.setState({
-        displayValue: (pDisp * disp).toString()
-      })
-      break;
-      case '/':
-      this.setState({
-        displayValue: (pDisp / disp).toString()
-      })
-      break;
-      default: return null
     }
   }
 
   makeButton(btnText){
-
     switch(btnText){
-
       case 'AC':
-      return <button key={btnText} onClick={() => this.clearDisplay()}> {btnText} </button>
+      return <button key={btnText} onClick={() => this.clearDisplay('AC')} > {btnText} </button>
 
       case '&#177;':
       return   <button key={btnText} onClick={ () => this.minusPos()}> 	&#177; </button>
@@ -104,8 +120,8 @@ class App extends Component {
       case '%':
       return <button key={btnText} > {btnText} </button>
 
-      case '&#8730;':
-      return  <button  key={btnText} > &#8730; </button>
+      case 'CE':
+      return  <button key={btnText} onClick={() => this.clearDisplay('CE')} >{btnText} </button>
 
       case '7':
       return  <button  key={btnText} onClick={ () => this.updateDigits(7)}> {btnText} </button>
@@ -129,7 +145,7 @@ class App extends Component {
       return <button key={btnText} onClick={ () => this.updateDigits(6)}> {btnText} </button>
 
       case 'x':
-      return <button key={btnText} onClick={ () => this.operators('x')}> {btnText} </button>
+      return <button key={btnText} onClick={ () => this.operators('*')}> {btnText} </button>
 
       case '1':
       return <button key={btnText} onClick={ () => this.updateDigits(1)}> {btnText} </button>
@@ -147,7 +163,7 @@ class App extends Component {
       return <button key={btnText} onClick={ () => this.updateDigits(0)}> {btnText} </button>
 
       case '.':
-      return <button key={btnText} onClick={ () => this.updateDigits('.')}> {btnText} </button>
+      return <button key={btnText} onClick={ () => this.dotify()}> {btnText} </button>
 
       case '=':
       return <button key={btnText} onClick={ () => this.equalator()} > {btnText} </button>
@@ -163,7 +179,8 @@ class App extends Component {
     console.log(e.target.value)
     this.setState({
       // .target.value gives you the user's input from the input field
-      displayValue: e.target.value
+      // to use add onChange={this.changeHandler} to input
+      instructions: e.target.value
     })
   }
 
@@ -182,15 +199,13 @@ class App extends Component {
 
   render() {
     return (
-      <div id="wrapper">
       <div id="calcBody">
-      <input id="calcDisplay"  type="text" value={this.state.displayValue} onChange={this.changeHandler} />
-      {this.makeRow(['AC', '&#177;', '%', '&#8730;'])}
+      <input id="calcDisplay"  type="text" value={this.state.instructions} readOnly  />
+      {this.makeRow(['AC', '&#177;', '%', 'CE'])}
       {this.makeRow(['7', '8', '9', 'x'])}
       {this.makeRow(['4', '5', '6', '/'])}
       {this.makeRow(['1', '2', '3', '-'])}
       {this.makeRow(['0', '.', '=', '+'])}
-      </div>
       </div>
     );
   }
